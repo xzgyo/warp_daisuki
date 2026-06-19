@@ -6,7 +6,7 @@ services:
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=0
     ports:
-      - "1080:1080"
+      - "1080:1080/tcp"
       - "8080:8080/udp"
     environment:
       - LANG=C.UTF-8
@@ -14,18 +14,6 @@ services:
       - warp_data:/var/lib/cloudflare-warp
     networks:
       - warp_net
-    restart: unless-stopped
-
-  socat:
-    image: alpine/socat:latest
-    container_name: warp_socat
-    network_mode: "service:warp"
-    depends_on:
-      - warp
-    command: >
-      sh -c "socat TCP-LISTEN:1080,fork,reuseaddr TCP:127.0.0.1:1081 &
-             socat UDP-LISTEN:1080,fork,reuseaddr UDP:127.0.0.1:1081 &
-             wait"
     restart: unless-stopped
 
 volumes:

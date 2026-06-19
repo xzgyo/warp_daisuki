@@ -47,7 +47,20 @@ echo "WARP 连接状态："
 warp-cli --accept-tos status || true
 
 echo "WARP SOCKS5 代理已就绪（端口 1081）"
-trap "echo '正在断开 WARP...'; warp-cli --accept-tos disconnect; exit 0" SIGTERM SIGINT
+
+echo "启动 socat 转发 (0.0.0.0:1080 -> 127.0.0.1:1081 TCP+UDP)..."
+socat TCP-LISTEN:1080,fork,reuseaddr TCP:127.0.0.1:1081 &
+SOCAT_TCP_PID=$!
+echo "Socat TCP ok, PID $SOCAT_TCP_PID"
+
+socat UDP-LISTEN:1080,fork,reuseaddr UDP:127.0.0.1:1081 &
+SOCAT_UDP_PID=$!
+echo "Socat UDP ok, PID $SOCAT_UDP_PID"
+
+
+trap "echo 'Stopping...'; \
+      kill $SOCAT_TCP_PID $SOCAT_UDP_PID 2>/dev/null; \
+      warp-cli --accept-tos disconnect" SIGTERM SIGINT
 
 while true; do
     if ! pgrep -x warp-svc > /dev/null; then
@@ -57,6 +70,10 @@ while true; do
     if ! warp-cli --accept-tos status 2>/dev/null | grep -q "Connected"; then
         echo "警告：WARP 未处于已连接状态，尝试重连..."
         warp-cli --accept-tos connect || true
+    fi
+    if ! pgrep -f "TCP-LISTEN:1080" > /dev/null; then
+        echo "错误：socat TCP 转发进程已退出"
+        exit 1
     fi
     sleep 10
 done
