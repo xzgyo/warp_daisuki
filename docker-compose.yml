@@ -18,7 +18,7 @@ services:
 
   socat:
     image: alpine/socat:latest
-    container_name: warp_socat_tcp
+    container_name: warp_socat
     network_mode: "service:warp"
     depends_on:
       - warp
